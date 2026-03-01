@@ -8,14 +8,6 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Definição das colunas base
-    colunas = [
-        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
-        ("comunidade", "TEXT UNIQUE"), # Unique para evitar duplicatas de nome
-        ("municipio", "TEXT"),
-        ("status_geral", "TEXT DEFAULT 'Parado'")
-    ]
-
     # Definição das fases (todas como TEXT para armazenar status: 'Pendente', 'Em Andamento', 'Concluído')
     fases = [
         "comunicacao_aos_orgaos_e_entidades", "reunião_de_abertura", "notificações_prévias", "relatorio_antropologico",
@@ -30,7 +22,7 @@ def init_db():
     ]
 
     # Construção da query SQL
-    cols_sql = ", ".join([f"{nome} {tipo}" for nome, tipo in colunas])
+    cols_sql = "id INTEGER PRIMARY KEY AUTOINCREMENT, comunidade TEXT UNIQUE, municipio TEXT, status_geral TEXT DEFAULT 'Parado'"
     for fase in fases:
         cols_sql += f", {fase} TEXT DEFAULT 'Pendente'"
 
@@ -41,6 +33,22 @@ def init_db():
     """
     
     cursor.execute(query)
+    conn.commit()
+    
+    # Criar tabela de contestações (separadamente para evitar erros)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS contestacoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        comunidade TEXT NOT NULL,
+        nome_requerente TEXT NOT NULL,
+        data_notificacao TEXT,
+        data_recebimento TEXT,
+        data_edital_notificacao TEXT,
+        descricao TEXT,
+        status TEXT DEFAULT 'Ativa',
+        FOREIGN KEY (comunidade) REFERENCES processos(comunidade)
+    )
+    """)
     conn.commit()
     conn.close()
 
@@ -106,6 +114,68 @@ def delete_community(comunidade):
         cursor.execute("DELETE FROM processos WHERE comunidade = ?", (comunidade,))
         conn.commit()
         return True, "Comunidade removida com sucesso!"
+    except Exception as e:
+        return False, f"Erro ao remover: {e}"
+    finally:
+        conn.close()
+
+# ============================================
+# FUNÇÕES PARA CONTESTAÇÕES
+# ============================================
+
+def add_contestacao(comunidade, nome_requerente, data_notificacao, data_recebimento, data_edital, descricao):
+    """Adiciona uma nova contestação."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO contestacoes 
+            (comunidade, nome_requerente, data_notificacao, data_recebimento, data_edital_notificacao, descricao)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (comunidade, nome_requerente, data_notificacao, data_recebimento, data_edital, descricao))
+        conn.commit()
+        return True, "Contestação cadastrada com sucesso!"
+    except Exception as e:
+        return False, f"Erro ao cadastrar: {e}"
+    finally:
+        conn.close()
+
+def load_contestacoes(comunidade):
+    """Carrega as contestações de uma comunidade específica."""
+    conn = sqlite3.connect(DB_NAME)
+    df = pd.read_sql_query(
+        "SELECT * FROM contestacoes WHERE comunidade = ? ORDER BY id DESC", 
+        conn, params=(comunidade,)
+    )
+    conn.close()
+    return df
+
+def update_contestacao(contestacao_id, nome_requerente, data_notificacao, data_recebimento, data_edital, descricao, status):
+    """Atualiza os dados de uma contestação."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE contestacoes 
+            SET nome_requerente = ?, data_notificacao = ?, data_recebimento = ?, 
+                data_edital_notificacao = ?, descricao = ?, status = ?
+            WHERE id = ?
+        """, (nome_requerente, data_notificacao, data_recebimento, data_edital, descricao, status, contestacao_id))
+        conn.commit()
+        return True, "Contestação atualizada!"
+    except Exception as e:
+        return False, f"Erro ao atualizar: {e}"
+    finally:
+        conn.close()
+
+def delete_contestacao(contestacao_id):
+    """Remove uma contestação."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM contestacoes WHERE id = ?", (contestacao_id,))
+        conn.commit()
+        return True, "Contestação removida!"
     except Exception as e:
         return False, f"Erro ao remover: {e}"
     finally:

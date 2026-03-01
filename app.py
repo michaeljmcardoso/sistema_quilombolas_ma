@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from database import init_db, load_data, update_status, add_new_community, update_community_info, delete_community
+from database import init_db, load_data, update_status, add_new_community, update_community_info, delete_community, add_contestacao, load_contestacoes, update_contestacao, delete_contestacao
 
 # Configuração da Página
 st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
@@ -201,5 +201,97 @@ elif page == "Gestão de Processos":
         criar_formulario_edicao(tab3, fases_aba3)
         criar_formulario_edicao(tab4, fases_aba4)
 
+   
+
+        # ============================================
+        # SEÇÃO 3: CADASTRO DE CONTESTAÇÕES
+        # ============================================
+        st.divider()
+        st.subheader("📜 Contestações")
+        
+        # Carregar contestações da comunidade selecionada
+        df_contestacoes = load_contestacoes(selected_comunidade)
+        
+        # Expander para adicionar nova contestação
+        with st.expander("➕ Cadastrar Nova Contestação"):
+            with st.form("add_contestacao_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    nome_req = st.text_input("Nome do Requerente")
+                    data_notif = st.date_input("Data da Notificação", value=None)
+                with col2:
+                    data_receb = st.date_input("Data do Recebimento", value=None)
+                    data_edital = st.date_input("Data do Edital de Notificação", value=None)
+                
+                descricao = st.text_area("Descrição/Observações")
+                
+                submit_contest = st.form_submit_button("Cadastrar Contestação")
+                
+                if submit_contest and nome_req:
+                    # Converter datas para string ISO
+                    data_notif_str = data_notif.strftime("%Y-%m-%d") if data_notif else None
+                    data_receb_str = data_receb.strftime("%Y-%m-%d") if data_receb else None
+                    data_edital_str = data_edital.strftime("%Y-%m-%d") if data_edital else None
+                    
+                    success, msg = add_contestacao(
+                        selected_comunidade, nome_req, data_notif_str, 
+                        data_receb_str, data_edital_str, descricao
+                    )
+                    if success:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.error(msg)
+        
+        # Visualizar contestações existentes
+        if not df_contestacoes.empty:
+            st.markdown(f"**Total de Contestações:** {len(df_contestacoes)}")
+            
+            for index, row_contest in df_contestacoes.iterrows():
+                with st.expander(f"📄 Contestação #{row_contest['id']} - {row_contest['nome_requerente']} ({row_contest['status']})"):
+                    with st.form(f"edit_contest_{row_contest['id']}"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            nome_edit = st.text_input("Nome do Requerente", value=row_contest['nome_requerente'])
+                            data_notif_edit = st.date_input("Data da Notificação", value=pd.to_datetime(row_contest['data_notificacao']) if pd.notna(row_contest['data_notificacao']) else None)
+                            data_receb_edit = st.date_input("Data do Recebimento", value=pd.to_datetime(row_contest['data_recebimento']) if pd.notna(row_contest['data_recebimento']) else None)
+                        with col2:
+                            data_edital_edit = st.date_input("Data do Edital de Notificação", value=pd.to_datetime(row_contest['data_edital_notificacao']) if pd.notna(row_contest['data_edital_notificacao']) else None)
+                            status_edit = st.selectbox("Status", ["Ativa", "Encerrada", "Improcedente", "Procedente"], index=["Ativa", "Encerrada", "Improcedente", "Procedente"].index(row_contest['status']))
+                        
+                        desc_edit = st.text_area("Descrição/Observações", value=row_contest['descricao'] if pd.notna(row_contest['descricao']) else "")
+                        
+                        col_btn1, col_btn2 = st.columns([1, 1])
+                        with col_btn1:
+                            save_contest = st.form_submit_button("💾 Salvar")
+                        with col_btn2:
+                            del_contest = st.form_submit_button("🗑️ Excluir")
+                        
+                        if save_contest:
+                            data_notif_str = data_notif_edit.strftime("%Y-%m-%d") if data_notif_edit else None
+                            data_receb_str = data_receb_edit.strftime("%Y-%m-%d") if data_receb_edit else None
+                            data_edital_str = data_edital_edit.strftime("%Y-%m-%d") if data_edital_edit else None
+                            
+                            success, msg = update_contestacao(
+                                row_contest['id'], nome_edit, data_notif_str, 
+                                data_receb_str, data_edital_str, desc_edit, status_edit
+                            )
+                            if success:
+                                st.success(msg)
+                                st.rerun()
+                            else:
+                                st.error(msg)
+                        
+                        if del_contest:
+                            confirm_del = st.checkbox(f"Confirmar exclusão da contestação #{row_contest['id']}?")
+                            if confirm_del:
+                                success, msg = delete_contestacao(row_contest['id'])
+                                if success:
+                                    st.success(msg)
+                                    st.rerun()
+                                else:
+                                    st.error(msg)
+        else:
+            st.info("Nenhuma contestação cadastrada para esta comunidade.")
     else:
         st.warning("Nenhuma comunidade encontrada.")
