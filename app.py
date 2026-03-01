@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from database import init_db, load_data, update_status, add_new_community
+from database import init_db, load_data, update_status, add_new_community, update_community_info, delete_community
 
 # Configuração da Página
 st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
@@ -109,18 +109,73 @@ elif page == "Gestão de Processos":
         # Seleção da Comunidade para Editar
         selected_comunidade = st.selectbox("Selecione a Comunidade para Editar:", df['comunidade'].unique())
         
+        # Recarregar dados para garantir dados atualizados
+        df = load_data()
+        
         # Filtrar dados da comunidade selecionada
         row = df[df['comunidade'] == selected_comunidade].iloc[0]
         
-        st.markdown(f"### Editando: **{row['comunidade']}** ({row['municipio']})")
+        # ============================================
+        # SEÇÃO 1: EDITAR DADOS BÁSICOS DA COMUNIDADE
+        # ============================================
+        with st.expander("✏️ Editar Dados da Comunidade", expanded=True):
+            with st.form("edit_basic_data"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    nome_editado = st.text_input(
+                        "Nome da Comunidade", 
+                        value=row['comunidade']
+                    )
+                with col2:
+                    municipio_editado = st.text_input(
+                        "Município", 
+                        value=row['municipio']
+                    )
+                
+                col_btn1, col_btn2 = st.columns([1, 1])
+                with col_btn1:
+                    save_basic = st.form_submit_button("💾 Salvar Alterações")
+                with col_btn2:
+                    delete_btn = st.form_submit_button("🗑️ Excluir Comunidade")
+                
+                if save_basic:
+                    if nome_editado != row['comunidade'] or municipio_editado != row['municipio']:
+                        success, msg = update_community_info(selected_comunidade, nome_editado, municipio_editado)
+                        if success:
+                            st.success(msg)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+                
+                if delete_btn:
+                    # Confirmação antes de excluir
+                    confirm = st.warning(f"⚠️ Tem certeza que deseja excluir '{selected_comunidade}'? Esta ação não pode ser desfeita.")
+                    if st.checkbox("Confirmar exclusão"):
+                        success, msg = delete_community(selected_comunidade)
+                        if success:
+                            st.success(msg)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+        
+        # Atualiza o nome selecionado se houve alteração
+        if nome_editado != selected_comunidade:
+            selected_comunidade = nome_editado
+            row = df[df['comunidade'] == selected_comunidade].iloc[0]
+        
+        st.markdown(f"### Editando Fases: **{row['comunidade']}** ({row['municipio']})")
+        
+        # ============================================
+        # SEÇÃO 2: EDITAR FASES DO PROCESSO
+        # ============================================
         
         # Agrupamento de Fases para facilitar a visualização (Tabs)
         tab1, tab2, tab3, tab4 = st.tabs(["Fase de Identificação e Delimitação", "Fase de Publicação RTID", "Fase Contenciosa", "Fase Final"])
 
         # Mapeamento das fases para as abas (Tabs)
         fases_aba1 = ["comunicacao_aos_orgaos_e_entidades", "reunião_de_abertura", "notificações_prévias", "relatorio_antropologico", "cadastro_familias", "levantamento_fundiario", "planta_memorial_descritivo", "analise_sobreposicao", "rtid_concluido", "reuniao_de_validacao_RTID_na_comunidade"]
-        fases_aba2 = ["parecer_técnico_1", "parecer_jurídico_1", "análise_CDR", "autorização_da_diretoria_para_publicação", "ficha_resumo_RTID", "publicação_DOU", "publicação_DOE", "notificação_aos_incidentes", "notificação_aos_confrontantes", "prazo_de_contestacao"]
-        fases_aba3 = ["parecer_técnico_2", "parecer_jurídico_2", "julgamento_CD", "notificações_do_resultado_da_análise_CD", "prazo_recurso", "analise_recurso_dq", "julgamento_conselho_diretor", "notificacoes_resultado_conselho"]
+        fases_aba2 = ["parecer_técnico_1", "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação", "ficha_resumo_RTID", "publicação_DOU", "publicação_DOE", "notificação_aos_incidentes", "notificação_aos_confrontantes"]
+        fases_aba3 = ["prazo_de_contestacao", "parecer_técnico_2", "parecer_jurídico_2", "julgamento_CD", "notificações_do_resultado_da_análise_CD", "prazo_recurso", "analise_recurso_dq", "julgamento_conselho_diretor", "notificacoes_resultado_conselho"]
         fases_aba4 = ["instrucao_kit_portaria", "kit_portaria_instruido", "publicacao_dou_final", "publicacao_doe_final"]
 
         def criar_formulario_edicao(abas, lista_fases):
@@ -140,7 +195,6 @@ elif page == "Gestão de Processos":
                     if novo_status != status_atual:
                         update_status(selected_comunidade, fase, novo_status)
                         st.success(f"Atualizado: {fase}")
-                        # Opcional: st.rerun() para atualizar dados em tempo real, mas pode ser lento
 
         criar_formulario_edicao(tab1, fases_aba1)
         criar_formulario_edicao(tab2, fases_aba2)

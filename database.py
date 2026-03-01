@@ -21,7 +21,7 @@ def init_db():
         "comunicacao_aos_orgaos_e_entidades", "reunião_de_abertura", "notificações_prévias", "relatorio_antropologico",
         "cadastro_familias", "levantamento_fundiario", "planta_memorial_descritivo", "analise_sobreposicao",
         "rtid_concluido", "reuniao_de_validacao_RTID_na_comunidade", 
-        "parecer_técnico_1", "parecer_jurídico_1", "análise_CDR", "autorização_da_diretoria_para_publicação", "ficha_resumo_RTID",
+        "parecer_técnico_1", "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação", "ficha_resumo_RTID",
         "publicação_DOU", "publicação_DOE", "notificação_aos_incidentes", "notificação_aos_confrontantes", "prazo_de_contestacao", 
         "parecer_técnico_2", "parecer_jurídico_2", "julgamento_CD", "notificações_do_resultado_da_análise_CD",
         "prazo_recurso", "analise_recurso_dq", "julgamento_conselho_diretor", "notificacoes_resultado_conselho" 
@@ -72,5 +72,41 @@ def add_new_community(comunidade, municipio):
         return True, "Comunidade adicionada com sucesso!"
     except sqlite3.IntegrityError:
         return False, "Erro: Comunidade já existe no banco."
+    finally:
+        conn.close()
+
+def update_community_info(comunidade_atual, novo_nome, novo_municipio):
+    """Atualiza o nome e/ou município de uma comunidade."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        # Verificar se o novo nome já existe (se for diferente do atual)
+        if novo_nome != comunidade_atual:
+            cursor.execute("SELECT id FROM processos WHERE comunidade = ? AND comunidade != ?", (novo_nome, comunidade_atual))
+            if cursor.fetchone():
+                return False, "Erro: Já existe outra comunidade com esse nome."
+        
+        # Atualiza os dados
+        cursor.execute(
+            "UPDATE processos SET comunidade = ?, municipio = ? WHERE comunidade = ?",
+            (novo_nome, novo_municipio, comunidade_atual)
+        )
+        conn.commit()
+        return True, "Dados atualizados com sucesso!"
+    except Exception as e:
+        return False, f"Erro ao atualizar: {e}"
+    finally:
+        conn.close()
+
+def delete_community(comunidade):
+    """Remove uma comunidade do banco de dados."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM processos WHERE comunidade = ?", (comunidade,))
+        conn.commit()
+        return True, "Comunidade removida com sucesso!"
+    except Exception as e:
+        return False, f"Erro ao remover: {e}"
     finally:
         conn.close()
