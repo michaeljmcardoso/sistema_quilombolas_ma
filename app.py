@@ -11,8 +11,8 @@ st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
 init_db()
 
 # --- TÍTULO E SIDEBAR ---
-st.title("🛡️ Sistema de Acompanhamento: Regularização Quilombola MA")
-st.markdown("Controle o andamento dos processos de titulação das comunidades.")
+st.title("🛡️ Acompanhamento de Metas: Publicação de RTID's")
+st.markdown("Controle de andamento processos")
 
 st.sidebar.header("Navegação")
 page = st.sidebar.radio("Ir para:", ["Dashboard Geral", "Gestão de Processos"])
@@ -30,7 +30,7 @@ def calcular_progresso(row):
 
 # --- PÁGINA 1: DASHBOARD ---
 if page == "Dashboard Geral":
-    st.header("Visão Geral dos Processos")
+    st.header("Visão Geral")
 
     if not df.empty:
         # Calcular progresso para todos
@@ -38,9 +38,9 @@ if page == "Dashboard Geral":
 
         # Métricas
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total de Comunidades", len(df))
+        col1.metric("Meta - 2026", len(df), "RTID's")
         col2.metric("Média de Progresso", f"{df['Progresso'].mean():.1f}%")
-        col3.metric("Processos Concluídos (>90%)", len(df[df['Progresso'] > 90]))
+        col3.metric("RTID's Publicados (>90%)", len(df[df['Progresso'] > 90]))
 
         st.divider()
 
