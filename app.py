@@ -11,8 +11,8 @@ st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
 init_db()
 
 # --- TÍTULO E SIDEBAR ---
-st.title("🛡️ Acompanhamento de Metas: Publicação de RTID's")
-st.markdown("Controle de andamento processos")
+st.title("🛡️ Sistema de Acompanhamento: Regularização Quilombola MA")
+st.markdown("Controle do Andamento de Metas para Publicação de RTID's.")
 
 st.sidebar.header("Navegação")
 page = st.sidebar.radio("Ir para:", ["Dashboard Geral", "Gestão de Processos"])
@@ -38,7 +38,7 @@ if page == "Dashboard Geral":
 
         # Métricas
         col1, col2, col3 = st.columns(3)
-        col1.metric("Meta - 2026", len(df), "RTID's")
+        col1.metric("Meta - 2026", len(df), "processos")
         col2.metric("Média de Progresso", f"{df['Progresso'].mean():.1f}%")
         col3.metric("RTID's Publicados (>90%)", len(df[df['Progresso'] > 90]))
 
@@ -60,29 +60,77 @@ if page == "Dashboard Geral":
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        # Gráfico 2: Mapa de Calor das Fases
-        st.subheader("Mapa de Calor das Etapas")
-        # Preparar dados para heatmap (Pivot longo)
-        fases_cols = [col for col in df.columns if col not in ['id', 'comunidade', 'municipio', 'status_geral', 'Progresso']]
-        
-        # Simplificando para visualização: Contagem de status por fase
-        status_counts = {}
-        for fase in fases_cols:
-            status_counts[fase] = df[fase].value_counts().to_dict()
-        
-        # Criar DataFrame para heatmap
-        heatmap_data = pd.DataFrame(status_counts).T.fillna(0)
-        
-        fig_heat = px.imshow(
-            heatmap_data,
-            labels=dict(x="Fase do Processo", y="Status", color="Quantidade"),
-            x=heatmap_data.columns,
-            y=heatmap_data.index,
-            color_continuous_scale="Blues",
-            aspect="auto"
+        # Gráfico 2: Progresso de Cada Processo por Fase
+        st.subheader("Progresso de Cada Processo por Fase")
+
+        # Definir fases antes de usar
+        fases = [col for col in df.columns if col not in ['id', 'comunidade', 'municipio', 'status_geral', 'Progresso']]
+
+        # Função para encontrar a fase mais avançada de cada comunidade
+        def encontrar_fase_atual(row):
+            """Encontra a fase mais avançada (última fase com status diferente de 'Pendente')."""
+            ordem_fases = {fase: idx for idx, fase in enumerate(fases)}
+            
+            fase_atual = "Não Iniciado"
+            fase_atual_ordem = -1
+            
+            for fase in fases:
+                status = row[fase]
+                # Considera qualquer status que não seja 'Pendente' como avançado
+                if status != 'Pendente':
+                    if ordem_fases[fase] > fase_atual_ordem:
+                        fase_atual = fase
+                        fase_atual_ordem = ordem_fases[fase]
+            
+            return fase_atual, fase_atual_ordem
+
+        # Aplicar função para encontrar fase atual
+        df['Fase Atual'], df['Ordem Fase'] = zip(*df.apply(encontrar_fase_atual, axis=1))
+
+        # Ordenar por ordem da fase (mais avançada primeiro)
+        df_sorted = df.sort_values('Ordem Fase', ascending=False)
+
+        # Criar gráfico de barras horizontais (UMA BARRA POR COMUNIDADE)
+        fig_fase_atual = px.bar(
+            df_sorted,
+            x='Ordem Fase',
+            y='comunidade',
+            orientation='h',
+            color='Ordem Fase',
+            color_continuous_scale='Blues',
+            range_x=[-1, len(fases)],
+            title="Progresso de Cada Processo por Fase",
+            hover_data={
+                'comunidade': True,
+                'municipio': True,
+                'Fase Atual': True,
+                'Ordem Fase': False
+            }
         )
-        fig_heat.update_layout(height=600)
-        st.plotly_chart(fig_heat, use_container_width=True)
+
+        fig_fase_atual.update_layout(
+            xaxis_title="Fase Atual (Ordem)",
+            yaxis_title="Comunidade",
+            height=600,
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_fase_atual, use_container_width=True)
+
+        # Tabela com fase atual de cada comunidade
+        st.subheader("Resumo da Fase Atual")
+
+        # Criar DataFrame de resumo a partir do df já ordenado
+        df_resumo = df[['comunidade', 'municipio', 'Fase Atual', 'Progresso', 'Ordem Fase']].copy()
+
+        # Formatar para exibição
+        df_resumo['Fase Atual'] = df_resumo['Fase Atual'].apply(lambda x: x.replace('_', ' ').title())
+
+        st.dataframe(
+            df_resumo,
+            use_container_width=True,
+            hide_index=True
+        )
 
     else:
         st.info("Nenhuma comunidade cadastrada ainda. Vá para a aba 'Gestão de Processos' para adicionar.")
