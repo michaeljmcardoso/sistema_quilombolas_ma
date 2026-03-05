@@ -11,8 +11,8 @@ st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
 init_db()
 
 # --- TÍTULO E SIDEBAR ---
-st.title("🛡️ Sistema de Acompanhamento: Regularização Quilombola MA")
-st.markdown("Controle do Andamento de Metas para Publicação de RTID's.")
+st.title("🛡️ Acompanhamento de Metas: Publicação de RTID's")
+st.markdown("Controle de andamento processos")
 
 st.sidebar.header("Navegação")
 page = st.sidebar.radio("Ir para:", ["Dashboard Geral", "Gestão de Processos"])
@@ -38,7 +38,7 @@ if page == "Dashboard Geral":
 
         # Métricas
         col1, col2, col3 = st.columns(3)
-        col1.metric("Meta - 2026", len(df), "processos")
+        col1.metric("Meta - 2026", len(df), "RTID's")
         col2.metric("Média de Progresso", f"{df['Progresso'].mean():.1f}%")
         col3.metric("RTID's Publicados (>90%)", len(df[df['Progresso'] > 90]))
 
