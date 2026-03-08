@@ -10,15 +10,14 @@ def init_db():
     
     # Definição das fases (todas como TEXT para armazenar status: 'Pendente', 'Em Andamento', 'Concluído')
     fases = [
-        "comunicacao_aos_orgaos_e_entidades", "reunião_de_abertura", "notificações_prévias", "relatorio_antropologico",
-        "cadastro_familias", "levantamento_fundiario", "planta_memorial_descritivo", "analise_sobreposicao",
-        "rtid_concluido", "reuniao_de_validacao_RTID_na_comunidade", 
-        "parecer_técnico_1", "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação", "ficha_resumo_RTID",
-        "publicação_DOU", "publicação_DOE", "notificação_aos_incidentes", "notificação_aos_confrontantes", "prazo_de_contestacao", 
-        "parecer_técnico_2", "parecer_jurídico_2", "julgamento_CD", "notificações_do_resultado_da_análise_CD",
-        "prazo_recurso", "analise_recurso_dq", "julgamento_conselho_diretor", "notificacoes_resultado_conselho" 
-        "julgamento_conselho_diretor", "notificacoes_resultado_conselho", 
-        "instrucao_kit_portaria", "kit_portaria_instruido", "publicacao_dou_final", "publicacao_doe_final"
+        "notificaçãoo_aos_órgãos_e_entidades", "reunião_de_abertura", "comunicações_prévias", "relatório_antropológico",
+        "cadastro_famílias", "levantamento_fundiário", "planta_memorial_descritivo", "análise_de_sobreposicão",
+        "rtid_concluído", "reunião_de_validação_na_comunidade", "ficha_resumo_do_RTID", "minuta_de_Edital", 
+        "parecer_técnico_1", "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação", 
+        "publicação_D.O.U", "publicação_D.O.E", "notificação_aos_órgãos_e_entidades", "notificação_aos_ocupantes", 
+        "notificação_aos_confinantes", "prazo_de_contestação", "pareceres_técnicos", "pareceres_jurídicos", "julgamento_da_contestação_no_CDR", 
+        "notificações_do_resultado_do_julgamento_do_CDR", "prazo_de_recurso", "análise_de_recurso_na_DQ", "julgamento_do_recurso_no_CD", 
+        "notificações_do_resultado_do_julgamento_do_CD", "instrução_do_kit_portaria", "publicação_portaria_D.O.U", "publicação_portaria_D.O.E"
     ]
 
     # Construção da query SQL
