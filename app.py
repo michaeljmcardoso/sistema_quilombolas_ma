@@ -221,10 +221,10 @@ elif page == "Gestão de Processos":
         tab1, tab2, tab3, tab4 = st.tabs(["Fase de Identificação e Delimitação", "Fase de Publicação RTID", "Fase Contenciosa", "Fase Final - Titulação"])
 
         # Mapeamento das fases para as abas (Tabs)
-        fases_aba1 = ["notificaçãoo_aos_órgãos_e_entidades", "reunião_de_abertura", "comunicações_prévias", "relatório_antropológico", "cadastro_famílias", "levantamento_fundiário", "planta_memorial_descritivo", "análise_de_sobreposicão", "rtid_concluído", "reunião_de_validação_na_comunidade"]
-        fases_aba2 = ["ficha_resumo_do_RTID", "minuta_de_Edital", "parecer_técnico_1", "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação", "publicação_D.O.U", "publicação_D.O.E", "notificação_aos_órgãos_e_entidades", "notificação_aos_ocupantes", "notificação_aos_confinantes"]
+        fases_aba1 = ["notificação_aos_órgãos_e_entidades", "reunião_de_abertura", "comunicações_prévias", "relatório_antropológico", "cadastro_famílias", "levantamento_fundiário", "planta_memorial_descritivo", "análise_de_sobreposicão", "rtid_concluído", "reunião_de_validação_na_comunidade"]
+        fases_aba2 = ["ficha_resumo_do_RTID", "minuta_de_Edital", "parecer_técnico_1", "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação", "publicação_DOU", "publicação_DOE", "notificação_aos_órgãos_e_entidades_art_12", "notificação_aos_ocupantes", "notificação_aos_confinantes"]
         fases_aba3 = ["prazo_de_contestação", "pareceres_técnicos", "pareceres_jurídicos", "julgamento_da_contestação_no_CDR", "notificações_do_resultado_do_julgamento_do_CDR", "prazo_de_recurso", "análise_de_recurso_na_DQ", "julgamento_do_recurso_no_CD", "notificações_do_resultado_do_julgamento_do_CD"]
-        fases_aba4 = ["instrução_do_kit_portaria", "publicação_portaria_D.O.U", "publicação_portaria_D.O.E"]
+        fases_aba4 = ["instrução_do_kit_portaria", "publicação_portaria_DOU", "publicação_portaria_DOE"]
 
         def criar_formulario_edicao(abas, lista_fases):
             with abas:
