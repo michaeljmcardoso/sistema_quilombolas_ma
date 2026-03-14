@@ -12,8 +12,8 @@ st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
 init_db()
 
 # --- TÍTULO E SIDEBAR ---
-st.title("📊 Acompanhamento de Metas: Publicação de RTID's")
-st.markdown("Controle de andamento processos")
+st.title("📊 Acompanhamento de Metas: Publicação de RTID's e Portarias")
+#st.markdown("Controle de andamento processos")
 
 st.sidebar.header("Navegação")
 page = st.sidebar.radio("Ir para:", ["Dashboard Geral", "Gestão de Processos", "Progresso Individual"])
@@ -103,43 +103,76 @@ if page == "Dashboard Geral":
     st.header("Visão Geral")
     
     if not df.empty:
-        # Calcular progresso para todos
+        # Definir metas
+        META_RTID = 8
+        META_PORTARIAS = 3
+        
+        # Calcular progresso para todos (mantido para outros gráficos)
         df['Progresso'] = df.apply(calcular_progresso, axis=1)
         
         # Arredondar o Progresso para 1 casa decimal para exibição consistente
         df['Progresso_Exibicao'] = df['Progresso'].round(1)
         
-        # Métricas - Agora com 4 colunas
-        col1, col2, col3, col4 = st.columns(4)
+        # Métricas de RTID
+        rtid_dou_publicado = len(df[df['publicação_DOU'] == 'Concluído'])
+        progresso_rtid_meta = (rtid_dou_publicado / META_RTID * 100) if META_RTID > 0 else 0
+        
+        # Métricas de Portaria
+        portarias_publicadas = len(df[
+            (df['publicação_portaria_DOU'] == 'Concluído') | 
+            (df['publicação_portaria_DOE'] == 'Concluído')
+        ])
+        progresso_portarias_meta = (portarias_publicadas / META_PORTARIAS * 100) if META_PORTARIAS > 0 else 0
+        
+        # Métricas - Agora com 6 colunas focadas nas metas
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        
         with col1:
-            st.metric("🎯 Meta - 2026", f"{len(df)} RTID's")
-        with col2:
-            media_progresso = df['Progresso'].mean()
-            st.metric("📈 Média de Progresso", f"{media_progresso:.1f}%")
-        with col3:
-            # RTID's com Publicação DOU Concluída
-            rtid_dou_publicado = len(df[df['publicação_DOU'] == 'Concluído'])
             st.metric(
-                "📄 RTID com DOU Publicado", 
-                f"{rtid_dou_publicado}",
+                "🎯 Meta RTID", 
+                f"{META_RTID}",
+                help="Meta estabelecida: 8 RTIDs"
+            )
+            
+        with col2:
+            st.metric(
+                "📄 RTID's Publicados", 
+                f"{rtid_dou_publicado} / {META_RTID}",
                 help="Número de processos que já concluíram a publicação no DOU"
             )
+            
+        with col3:
+            st.metric(
+                "📊 % Meta RTID", 
+                f"{progresso_rtid_meta:.1f}%",
+                help="Percentual da meta de RTIDs atingido"
+            )
+            
         with col4:
-            # Portarias de Reconhecimento Publicadas
-            portarias_publicadas = len(df[
-                (df['publicação_portaria_DOU'] == 'Concluído') | 
-                (df['publicação_portaria_DOE'] == 'Concluído')
-            ])
+            st.metric(
+                "🎯 Meta Portarias", 
+                f"{META_PORTARIAS}",
+                help="Meta estabelecida: 3 Portarias"
+            )
+            
+        with col5:
             st.metric(
                 "📜 Portarias Publicadas", 
-                f"{portarias_publicadas}",
+                f"{portarias_publicadas} / {META_PORTARIAS}",
                 help="Número de processos com portaria de reconhecimento publicada (DOU ou DOE)"
             )
-        
+            
+        with col6:
+            st.metric(
+                "📊 % Meta Portarias", 
+                f"{progresso_portarias_meta:.1f}%",
+                help="Percentual da meta de Portarias atingido"
+            )
+
         st.divider()
         
         # Gráfico 1: Barra de Progresso por Comunidade
-        st.subheader("📊 Andamento por Comunidade")
+        #st.subheader("📊 Andamento por Comunidade")
         df_sorted = df.sort_values('Progresso', ascending=False)
         
         # CORREÇÃO: Formatar o hover para mostrar apenas 1 casa decimal
@@ -159,16 +192,16 @@ if page == "Dashboard Geral":
             labels={'Progresso_Exibicao': 'Progresso (%)'}  # Rótulo mais amigável
         )
         fig_bar.update_layout(height=500)
-        st.plotly_chart(fig_bar, use_container_width=True)
+        #st.plotly_chart(fig_bar, use_container_width=True)
         
         # Gráfico 2: Progresso de Cada Processo por Fase
         st.subheader("📋 Progresso de Cada Processo por Fase")
-        
+
         # Função para encontrar a fase mais avançada
         def encontrar_fase_atual(row):
-            ordem_fases = {fase: idx for idx, fase in enumerate(fases_completas)}
+            ordem_fases = {fase: idx+1 for idx, fase in enumerate(fases_completas)}  # Começa em 1 em vez de 0
             fase_atual = "Não Iniciado"
-            fase_atual_ordem = -1
+            fase_atual_ordem = 0  # Não Iniciado agora é 0 (positivo)
             for fase in fases_completas:
                 status = row[fase] if fase in row.index else "Pendente"
                 if status != 'Pendente' and status != 'Não Aplicável':
@@ -176,76 +209,80 @@ if page == "Dashboard Geral":
                         fase_atual = fase
                         fase_atual_ordem = ordem_fases[fase]
             return fase_atual, fase_atual_ordem
-        
+
         # Aplicar função
         df['Fase Atual'], df['Ordem Fase'] = zip(*df.apply(encontrar_fase_atual, axis=1))
-        
-        # Criar gráfico
-        df_sorted = df.sort_values('Ordem Fase', ascending=False)
+
+        # Criar um mapeamento de ordem para nome da fase (mais legível)
+        nomes_fases_amigaveis = {
+            fase: fase.replace('_', ' ').title() 
+            for fase in fases_completas
+        }
+        # Adicionar o caso especial "Não Iniciado"
+        nomes_fases_amigaveis["Não Iniciado"] = "⏳ Não Iniciado"
+
+        # Criar uma coluna com o nome amigável da fase atual
+        df['Fase Atual Nome'] = df['Fase Atual'].apply(
+            lambda x: nomes_fases_amigaveis.get(x, x)
+        )
+
+        # Ordenar por ordem da fase (do menos avançado para o mais avançado)
+        df_sorted = df.sort_values('Ordem Fase', ascending=True)
+
+        # Criar lista de todas as fases em ordem, incluindo "Não Iniciado" no início
+        todas_fases_ordenadas = ["⏳ Não Iniciado"] + [nomes_fases_amigaveis[f] for f in fases_completas]
+
+        # Criar o gráfico com os nomes das fases no eixo x
         fig_fase_atual = px.bar(
             df_sorted,
             x='Ordem Fase',
             y='comunidade',
             orientation='h',
-            color='Ordem Fase',
-            color_continuous_scale='Viridis',
-            title="Progresso de Cada Processo por Fase",
+            color='Fase Atual Nome',
+            color_discrete_sequence=px.colors.qualitative.Set3,
+            title="Fase Atual de Cada Processo",
             hover_data={
                 'comunidade': True,
                 'municipio': True,
-                'Fase Atual': True,
+                'Fase Atual Nome': True,
                 'Ordem Fase': False,
-                'Progresso': ':.1f'  # Adicionar progresso formatado no hover
-            }
+                'Progresso': ':.1f'
+            },
+            labels={
+                'Ordem Fase': 'Fase do Processo',
+                'comunidade': 'Comunidade',
+                'Fase Atual Nome': 'Fase Atual'
+            },
+            category_orders={'Fase Atual Nome': todas_fases_ordenadas}
         )
+
+        # Configurar os ticks do eixo x para mostrar os nomes das fases
+        fases_unicas = sorted(df['Fase Atual'].unique(), 
+                            key=lambda x: 0 if x == "Não Iniciado" else fases_completas.index(x) + 1)
+
+        # Mapear os valores de ordem para os nomes das fases
+        tick_vals = [0] + [i+1 for i in range(len(fases_completas))]  # 0 para Não Iniciado, 1-34 para as fases
+        tick_text = ["⏳ Não Iniciado"] + [nomes_fases_amigaveis[f] for f in fases_completas]
+
+        # Ajustar o layout para melhor visualização
         fig_fase_atual.update_layout(
-            xaxis_title="Fase Atual (Ordem)",
+            xaxis=dict(
+                title="Fase do Processo",
+                tickmode='array',
+                tickvals=tick_vals,
+                ticktext=tick_text,
+                tickangle=45
+            ),
             yaxis_title="Comunidade",
-            height=600
+            height=max(500, len(df) * 35),  # Altura dinâmica
+            showlegend=False  # Esconder legenda já que as cores são por fase
         )
+
+        # Adicionar linhas verticais para separar as fases principais
+        for i in range(1, len(tick_vals)):
+            fig_fase_atual.add_vline(x=i-0.5, line_width=1, line_dash="dash", line_color="gray", opacity=0.3)
+
         st.plotly_chart(fig_fase_atual, use_container_width=True)
-        
-        # Tabela resumo com indicadores adicionais
-        st.subheader("📝 Resumo Detalhado")
-        
-        # Criar colunas adicionais para o resumo
-        df_resumo = df[['comunidade', 'municipio', 'Fase Atual', 'Progresso']].copy()
-        df_resumo['RTID Publicado DOU'] = df['publicação_DOU'].apply(
-            lambda x: '✅' if x == 'Concluído' else '⏳'
-        )
-        df_resumo['Portaria Publicada'] = df.apply(
-            lambda row: '✅' if (
-                row['publicação_portaria_DOU'] == 'Concluído' or 
-                row['publicação_portaria_DOE'] == 'Concluído'
-            ) else '⏳',
-            axis=1
-        )
-        
-        # Formatar nomes
-        df_resumo['Fase Atual'] = df_resumo['Fase Atual'].apply(
-            lambda x: x.replace('_', ' ').title() if x != "Não Iniciado" else x
-        )
-        df_resumo['Progresso'] = df_resumo['Progresso'].round(1).astype(str) + '%'  # Arredondar antes de converter para string
-        
-        # Reordenar colunas
-        df_resumo = df_resumo[[
-            'comunidade', 'municipio', 'Progresso', 'Fase Atual', 
-            'RTID Publicado DOU', 'Portaria Publicada'
-        ]]
-        
-        st.dataframe(
-            df_resumo,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "comunidade": "Comunidade",
-                "municipio": "Município",
-                "Progresso": "Progresso (%)",
-                "Fase Atual": "Fase Atual",
-                "RTID Publicado DOU": "RTID DOU",
-                "Portaria Publicada": "Portaria"
-            }
-        )
         
         # Gráficos adicionais para visualização das métricas
         st.divider()
