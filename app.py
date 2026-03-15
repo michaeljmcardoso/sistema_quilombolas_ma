@@ -199,9 +199,9 @@ if page == "Dashboard Geral":
 
         # Função para encontrar a fase mais avançada
         def encontrar_fase_atual(row):
-            ordem_fases = {fase: idx+1 for idx, fase in enumerate(fases_completas)}  # Começa em 1 em vez de 0
+            ordem_fases = {fase: idx for idx, fase in enumerate(fases_completas)}  # Começa em 1 em vez de 0
             fase_atual = "Não Iniciado"
-            fase_atual_ordem = 0  # Não Iniciado agora é 0 (positivo)
+            fase_atual_ordem = -1  # Não Iniciado agora é -1 (negativo)
             for fase in fases_completas:
                 status = row[fase] if fase in row.index else "Pendente"
                 if status != 'Pendente' and status != 'Não Aplicável':
@@ -239,7 +239,8 @@ if page == "Dashboard Geral":
             y='comunidade',
             orientation='h',
             color='Fase Atual Nome',
-            color_discrete_sequence=px.colors.qualitative.Set3,
+            #color_continuous_scale='RdYlGn',
+            color_discrete_sequence=px.colors.qualitative.Set1,  # Usar uma paleta de cores qualitativa para categorias
             title="Fase Atual de Cada Processo",
             hover_data={
                 'comunidade': True,
@@ -271,11 +272,20 @@ if page == "Dashboard Geral":
                 tickmode='array',
                 tickvals=tick_vals,
                 ticktext=tick_text,
-                tickangle=45
+                tickangle=45,
+                tickfont=dict(size=12)  # Tamanho da fonte dos ticks do eixo X
             ),
-            yaxis_title="Comunidade",
-            height=max(500, len(df) * 35),  # Altura dinâmica
-            showlegend=False  # Esconder legenda já que as cores são por fase
+            yaxis=dict(
+                title="",
+                tickfont=dict(size=16)  # AUMENTA O TAMANHO DOS NOMES DAS COMUNIDADES NO EIXO Y
+            ),
+            height=max(600, len(df) * 40),  # Altura dinâmica aumentada
+            showlegend=False,
+            font=dict(
+                family="Arial, sans-serif",
+                size=12,  # Tamanho da fonte geral
+                color="black"
+            )
         )
 
         # Adicionar linhas verticais para separar as fases principais
