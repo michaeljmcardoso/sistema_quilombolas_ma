@@ -199,9 +199,9 @@ if page == "Dashboard Geral":
 
         # Função para encontrar a fase mais avançada
         def encontrar_fase_atual(row):
-            ordem_fases = {fase: idx for idx, fase in enumerate(fases_completas)}  # Começa em 1 em vez de 0
+            ordem_fases = {fase: idx for idx, fase in enumerate(fases_completas)}
             fase_atual = "Não Iniciado"
-            fase_atual_ordem = -1  # Não Iniciado agora é -1 (negativo)
+            fase_atual_ordem = -1
             for fase in fases_completas:
                 status = row[fase] if fase in row.index else "Pendente"
                 if status != 'Pendente' and status != 'Não Aplicável':
@@ -226,6 +226,34 @@ if page == "Dashboard Geral":
             lambda x: nomes_fases_amigaveis.get(x, x)
         )
 
+        # ADICIONAR COLUNAS PARA STATUS DAS FASES PRINCIPAIS
+        df['Status_RTID'] = df['publicação_DOU'].apply(
+            lambda x: {
+                'Concluído': '✅ Concluído',
+                'Em Andamento': '🔄 Em Andamento',
+                'Pendente': '⏳ Pendente',
+                'Não Aplicável': '🚫 Não Aplicável'
+            }.get(x, '❓ Desconhecido')
+        )
+
+        df['Status_Portaria_DOU'] = df['publicação_portaria_DOU'].apply(
+            lambda x: {
+                'Concluído': '✅ Concluído',
+                'Em Andamento': '🔄 Em Andamento',
+                'Pendente': '⏳ Pendente',
+                'Não Aplicável': '🚫 Não Aplicável'
+            }.get(x, '❓ Desconhecido')
+        )
+
+        df['Status_Portaria_DOE'] = df['publicação_portaria_DOE'].apply(
+            lambda x: {
+                'Concluído': '✅ Concluído',
+                'Em Andamento': '🔄 Em Andamento',
+                'Pendente': '⏳ Pendente',
+                'Não Aplicável': '🚫 Não Aplicável'
+            }.get(x, '❓ Desconhecido')
+        )
+
         # Ordenar por ordem da fase (do menos avançado para o mais avançado)
         df_sorted = df.sort_values('Ordem Fase', ascending=True)
 
@@ -239,20 +267,25 @@ if page == "Dashboard Geral":
             y='comunidade',
             orientation='h',
             color='Fase Atual Nome',
-            #color_continuous_scale='RdYlGn',
-            color_discrete_sequence=px.colors.qualitative.Set1,  # Usar uma paleta de cores qualitativa para categorias
+            color_discrete_sequence=px.colors.qualitative.Set1,
             title="Fase Atual de Cada Processo",
             hover_data={
                 'comunidade': True,
                 'municipio': True,
                 'Fase Atual Nome': True,
                 'Ordem Fase': False,
-                'Progresso': ':.1f'
+                'Progresso': ':.1f',
+                'Status_RTID': True,
+                'Status_Portaria_DOU': True,
+                'Status_Portaria_DOE': True
             },
             labels={
                 'Ordem Fase': 'Fase do Processo',
                 'comunidade': 'Comunidade',
-                'Fase Atual Nome': 'Fase Atual'
+                'Fase Atual Nome': 'Fase Atual',
+                'Status_RTID': 'RTID',
+                'Status_Portaria_DOU': 'Portaria DOU',
+                'Status_Portaria_DOE': 'Portaria DOE'
             },
             category_orders={'Fase Atual Nome': todas_fases_ordenadas}
         )
@@ -262,7 +295,7 @@ if page == "Dashboard Geral":
                             key=lambda x: 0 if x == "Não Iniciado" else fases_completas.index(x) + 1)
 
         # Mapear os valores de ordem para os nomes das fases
-        tick_vals = [0] + [i+1 for i in range(len(fases_completas))]  # 0 para Não Iniciado, 1-34 para as fases
+        tick_vals = [0] + [i+1 for i in range(len(fases_completas))]
         tick_text = ["⏳ Não Iniciado"] + [nomes_fases_amigaveis[f] for f in fases_completas]
 
         # Ajustar o layout para melhor visualização
@@ -273,18 +306,23 @@ if page == "Dashboard Geral":
                 tickvals=tick_vals,
                 ticktext=tick_text,
                 tickangle=45,
-                tickfont=dict(size=12)  # Tamanho da fonte dos ticks do eixo X
+                tickfont=dict(size=12)
             ),
             yaxis=dict(
                 title="",
-                tickfont=dict(size=16)  # AUMENTA O TAMANHO DOS NOMES DAS COMUNIDADES NO EIXO Y
+                tickfont=dict(size=16)
             ),
-            height=max(600, len(df) * 40),  # Altura dinâmica aumentada
+            height=max(600, len(df) * 40),
             showlegend=False,
             font=dict(
                 family="Arial, sans-serif",
-                size=12,  # Tamanho da fonte geral
+                size=12,
                 color="black"
+            ),
+            hoverlabel=dict(
+                bgcolor="black",
+                font_size=14,
+                font_family="Arial"
             )
         )
 
@@ -293,6 +331,7 @@ if page == "Dashboard Geral":
             fig_fase_atual.add_vline(x=i-0.5, line_width=1, line_dash="dash", line_color="gray", opacity=0.3)
 
         st.plotly_chart(fig_fase_atual, use_container_width=True)
+
         
         # Gráficos adicionais para visualização das métricas
         st.divider()
@@ -413,6 +452,11 @@ elif page == "Gestão de Processos":
         # SEÇÃO 1: EDITAR DADOS BÁSICOS
         # ==============================================
         with st.expander("✏️ Editar Dados da Comunidade", expanded=True):
+            
+            # Inicializar estado de confirmação no session_state
+            if 'confirmar_exclusao' not in st.session_state:
+                st.session_state.confirmar_exclusao = False
+            
             with st.form("edit_basic_data"):
                 col1, col2 = st.columns(2)
                 with col1:
@@ -448,13 +492,22 @@ elif page == "Gestão de Processos":
                         st.info("ℹ️ Nenhuma alteração detectada.")
                 
                 if delete_btn:
-                    st.warning(f"⚠️ Tem certeza que deseja excluir '{selected_comunidade}'?")
-                    confirm_delete = st.checkbox("Confirmar exclusão", key="confirm_delete")
-                    if confirm_delete:
+                    # Ativar modo de confirmação
+                    st.session_state.confirmar_exclusao = True
+                    st.rerun()
+            
+            # Área de confirmação fora do formulário
+            if st.session_state.confirmar_exclusao:
+                st.warning(f"⚠️ **Tem certeza que deseja excluir '{selected_comunidade}'?** Esta ação não pode ser desfeita.")
+                
+                col_confirm1, col_confirm2 = st.columns([1, 3])
+                with col_confirm1:
+                    if st.button("✅ Sim, excluir", key="confirmar_sim"):
                         success, msg = delete_community(selected_comunidade)
                         if success:
                             st.success(msg)
                             st.cache_data.clear()
+                            st.session_state.confirmar_exclusao = False
                             if len(df) > 1:
                                 # Selecionar outra comunidade
                                 novas_comunidades = [c for c in df['comunidade'].unique() if c != selected_comunidade]
@@ -462,6 +515,11 @@ elif page == "Gestão de Processos":
                             st.rerun()
                         else:
                             st.error(msg)
+                
+                with col_confirm2:
+                    if st.button("❌ Não, cancelar", key="confirmar_nao"):
+                        st.session_state.confirmar_exclusao = False
+                        st.rerun()
             
             st.markdown(f"### Editando Fases: **{row['comunidade']}** ({row['municipio']})")
         
