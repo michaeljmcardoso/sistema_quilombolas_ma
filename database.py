@@ -4,47 +4,59 @@ import pandas as pd
 DB_NAME = "processos_quilombolas.db"
 
 def init_db():
-    """Inicializa o banco de dados e cria a tabela se não existir."""
+    """Inicializa o banco de dados e cria as tabelas se não existirem."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Definição das fases (todas como TEXT para armazenar status: 'Pendente', 'Em Andamento', 'Concluído', 'Não Aplicável')
-    fases = [
-        # Fase de Identificação e Delimitação
+    # Definição das fases para processos RTID
+    fases_rtid = [
         "notificação_aos_órgãos_e_entidades", "reunião_de_abertura", "comunicações_prévias", "relatório_antropológico",
-        "cadastro_de_famílias", "levantamento_fundiário", "planta_memorial_descritivo", "análise_de_sobreposicão",  # CORRIGIDO: sobreposicão -> sobreposição
+        "cadastro_de_famílias", "levantamento_fundiário", "planta_memorial_descritivo", "análise_de_sobreposicão",
         "rtid_concluído", "reunião_de_validação_na_comunidade", 
-        
-        # Fase de Publicação RTID
         "ficha_resumo_do_RTID", "minuta_de_Edital", 
         "parecer_técnico_1", "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação", 
         "publicação_DOU", "publicação_DOE", "notificação_aos_órgãos_e_entidades_art_12", "notificação_aos_ocupantes", 
-        "notificação_aos_confinantes", 
-        
-        # Fase Contenciosa
-        "prazo_de_contestação", "pareceres_técnicos", "pareceres_jurídicos", "julgamento_da_contestação_no_CDR", 
-        "notificações_do_resultado_do_julgamento_do_CDR", "prazo_de_recurso", "análise_de_recurso_na_DQ", "julgamento_do_recurso_no_CD", 
-        "notificações_do_resultado_do_julgamento_do_CD", 
-        
-        # Fase Portaria de Reconhecimento
+        "notificação_aos_confinantes", "prazo_de_contestação", "pareceres_técnicos", "pareceres_jurídicos", 
+        "julgamento_da_contestação_no_CDR", "notificações_do_resultado_do_julgamento_do_CDR", "prazo_de_recurso", 
+        "análise_de_recurso_na_DQ", "julgamento_do_recurso_no_CD", "notificações_do_resultado_do_julgamento_do_CD", 
         "parecer_análise_de_instrução_processual", "instrução_do_kit_portaria", "publicação_portaria_DOU", "publicação_portaria_DOE"
     ]
 
-    # Construção da query SQL
-    cols_sql = "id INTEGER PRIMARY KEY AUTOINCREMENT, comunidade TEXT UNIQUE, municipio TEXT, status_geral TEXT DEFAULT 'Em Andamento'"
-    for fase in fases:
-        cols_sql += f", {fase} TEXT DEFAULT 'Pendente'"
+    # Criar tabela de processos RTID
+    cols_rtid_sql = "id INTEGER PRIMARY KEY AUTOINCREMENT, comunidade TEXT UNIQUE, municipio TEXT, status_geral TEXT DEFAULT 'Em Andamento'"
+    for fase in fases_rtid:
+        cols_rtid_sql += f", {fase} TEXT DEFAULT 'Pendente'"
 
-    query = f"""
-    CREATE TABLE IF NOT EXISTS processos (
-        {cols_sql}
+    query_rtid = f"""
+    CREATE TABLE IF NOT EXISTS processos_rtid (
+        {cols_rtid_sql}
     )
     """
     
-    cursor.execute(query)
-    conn.commit()
+    cursor.execute(query_rtid)
     
-    # Criar tabela de contestações (separadamente para evitar erros)
+    # Definição das fases específicas para Portaria
+    fases_portaria = [
+        "parecer_análise_de_instrução_processual",
+        "instrução_do_kit_portaria",
+        "publicação_portaria_DOU",
+        "publicação_portaria_DOE"
+    ]
+    
+    # Criar tabela de processos Portaria
+    cols_portaria_sql = "id INTEGER PRIMARY KEY AUTOINCREMENT, comunidade TEXT UNIQUE, municipio TEXT, status_geral TEXT DEFAULT 'Em Andamento'"
+    for fase in fases_portaria:
+        cols_portaria_sql += f", {fase} TEXT DEFAULT 'Pendente'"
+    
+    query_portaria = f"""
+    CREATE TABLE IF NOT EXISTS processos_portaria (
+        {cols_portaria_sql}
+    )
+    """
+    
+    cursor.execute(query_portaria)
+    
+    # Criar tabela de contestações (relacionada a processos_rtid)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS contestacoes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,32 +67,36 @@ def init_db():
         data_edital_notificacao TEXT,
         descricao TEXT,
         status TEXT DEFAULT 'Ativa',
-        FOREIGN KEY (comunidade) REFERENCES processos(comunidade) ON DELETE CASCADE
+        FOREIGN KEY (comunidade) REFERENCES processos_rtid(comunidade) ON DELETE CASCADE
     )
     """)
+    
     conn.commit()
     conn.close()
 
-def load_data():
-    """Carrega os dados para o Pandas."""
+# ============================================
+# FUNÇÕES PARA PROCESSOS RTID
+# ============================================
+
+def load_rtid_data():
+    """Carrega os dados dos processos RTID."""
     conn = sqlite3.connect(DB_NAME)
-    df = pd.read_sql_query("SELECT * FROM processos ORDER BY comunidade", conn)
+    df = pd.read_sql_query("SELECT * FROM processos_rtid ORDER BY comunidade", conn)
     conn.close()
     return df
 
-def update_status(comunidade, fase, novo_status):
-    """Atualiza o status de uma fase específica."""
+def update_rtid_status(comunidade, fase, novo_status):
+    """Atualiza o status de uma fase específica em processos RTID."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Validar se o status é permitido
     status_validos = ["Pendente", "Em Andamento", "Concluído", "Não Aplicável"]
     if novo_status not in status_validos:
         conn.close()
         return False, f"Status inválido. Use um dos: {', '.join(status_validos)}"
     
     try:
-        query = f"UPDATE processos SET {fase} = ? WHERE comunidade = ?"
+        query = f"UPDATE processos_rtid SET {fase} = ? WHERE comunidade = ?"
         cursor.execute(query, (novo_status, comunidade))
         conn.commit()
         return True, "Status atualizado com sucesso!"
@@ -89,14 +105,14 @@ def update_status(comunidade, fase, novo_status):
     finally:
         conn.close()
 
-def add_new_community(comunidade, municipio):
-    """Adiciona uma nova comunidade."""
+def add_rtid_community(comunidade, municipio):
+    """Adiciona uma nova comunidade na tabela RTID."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO processos (comunidade, municipio) VALUES (?, ?)", (comunidade, municipio))
+        cursor.execute("INSERT INTO processos_rtid (comunidade, municipio) VALUES (?, ?)", (comunidade, municipio))
         conn.commit()
-        return True, "✅ Comunidade adicionada com sucesso!"
+        return True, "✅ Comunidade RTID adicionada com sucesso!"
     except sqlite3.IntegrityError:
         return False, "❌ Erro: Comunidade já existe no banco."
     except Exception as e:
@@ -104,20 +120,18 @@ def add_new_community(comunidade, municipio):
     finally:
         conn.close()
 
-def update_community_info(comunidade_atual, novo_nome, novo_municipio):
-    """Atualiza o nome e/ou município de uma comunidade."""
+def update_rtid_community_info(comunidade_atual, novo_nome, novo_municipio):
+    """Atualiza o nome e/ou município de uma comunidade RTID."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        # Verificar se o novo nome já existe (se for diferente do atual)
         if novo_nome != comunidade_atual:
-            cursor.execute("SELECT id FROM processos WHERE comunidade = ? AND comunidade != ?", (novo_nome, comunidade_atual))
+            cursor.execute("SELECT id FROM processos_rtid WHERE comunidade = ? AND comunidade != ?", (novo_nome, comunidade_atual))
             if cursor.fetchone():
                 return False, "❌ Erro: Já existe outra comunidade com esse nome."
         
-        # Atualiza os dados
         cursor.execute(
-            "UPDATE processos SET comunidade = ?, municipio = ? WHERE comunidade = ?",
+            "UPDATE processos_rtid SET comunidade = ?, municipio = ? WHERE comunidade = ?",
             (novo_nome, novo_municipio, comunidade_atual)
         )
         conn.commit()
@@ -127,22 +141,101 @@ def update_community_info(comunidade_atual, novo_nome, novo_municipio):
     finally:
         conn.close()
 
-def delete_community(comunidade):
-    """Remove uma comunidade do banco de dados."""
+def delete_rtid_community(comunidade):
+    """Remove uma comunidade RTID do banco de dados."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        # As contestações serão removidas automaticamente devido ao ON DELETE CASCADE
-        cursor.execute("DELETE FROM processos WHERE comunidade = ?", (comunidade,))
+        cursor.execute("DELETE FROM processos_rtid WHERE comunidade = ?", (comunidade,))
         conn.commit()
-        return True, "✅ Comunidade removida com sucesso!"
+        return True, "✅ Comunidade RTID removida com sucesso!"
     except Exception as e:
         return False, f"❌ Erro ao remover: {e}"
     finally:
         conn.close()
 
 # ============================================
-# FUNÇÕES PARA CONTESTAÇÕES
+# FUNÇÕES PARA PROCESSOS PORTARIA
+# ============================================
+
+def load_portaria_data():
+    """Carrega os dados dos processos Portaria."""
+    conn = sqlite3.connect(DB_NAME)
+    df = pd.read_sql_query("SELECT * FROM processos_portaria ORDER BY comunidade", conn)
+    conn.close()
+    return df
+
+def update_portaria_status(comunidade, fase, novo_status):
+    """Atualiza o status de uma fase específica em processos Portaria."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    status_validos = ["Pendente", "Em Andamento", "Concluído", "Não Aplicável"]
+    if novo_status not in status_validos:
+        conn.close()
+        return False, f"Status inválido. Use um dos: {', '.join(status_validos)}"
+    
+    try:
+        query = f"UPDATE processos_portaria SET {fase} = ? WHERE comunidade = ?"
+        cursor.execute(query, (novo_status, comunidade))
+        conn.commit()
+        return True, "Status atualizado com sucesso!"
+    except Exception as e:
+        return False, f"Erro ao atualizar: {e}"
+    finally:
+        conn.close()
+
+def add_portaria_community(comunidade, municipio):
+    """Adiciona uma nova comunidade na tabela Portaria."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO processos_portaria (comunidade, municipio) VALUES (?, ?)", (comunidade, municipio))
+        conn.commit()
+        return True, "✅ Comunidade Portaria adicionada com sucesso!"
+    except sqlite3.IntegrityError:
+        return False, "❌ Erro: Comunidade já existe no banco."
+    except Exception as e:
+        return False, f"❌ Erro ao adicionar: {e}"
+    finally:
+        conn.close()
+
+def update_portaria_community_info(comunidade_atual, novo_nome, novo_municipio):
+    """Atualiza o nome e/ou município de uma comunidade Portaria."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        if novo_nome != comunidade_atual:
+            cursor.execute("SELECT id FROM processos_portaria WHERE comunidade = ? AND comunidade != ?", (novo_nome, comunidade_atual))
+            if cursor.fetchone():
+                return False, "❌ Erro: Já existe outra comunidade com esse nome."
+        
+        cursor.execute(
+            "UPDATE processos_portaria SET comunidade = ?, municipio = ? WHERE comunidade = ?",
+            (novo_nome, novo_municipio, comunidade_atual)
+        )
+        conn.commit()
+        return True, "✅ Dados atualizados com sucesso!"
+    except Exception as e:
+        return False, f"❌ Erro ao atualizar: {e}"
+    finally:
+        conn.close()
+
+def delete_portaria_community(comunidade):
+    """Remove uma comunidade Portaria do banco de dados."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM processos_portaria WHERE comunidade = ?", (comunidade,))
+        conn.commit()
+        return True, "✅ Comunidade Portaria removida com sucesso!"
+    except Exception as e:
+        return False, f"❌ Erro ao remover: {e}"
+    finally:
+        conn.close()
+
+# ============================================
+# FUNÇÕES PARA CONTESTAÇÕES (mantidas para RTID)
 # ============================================
 
 def add_contestacao(comunidade, nome_requerente, data_notificacao, data_recebimento, data_edital, descricao):
@@ -150,8 +243,7 @@ def add_contestacao(comunidade, nome_requerente, data_notificacao, data_recebime
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        # Verificar se a comunidade existe
-        cursor.execute("SELECT id FROM processos WHERE comunidade = ?", (comunidade,))
+        cursor.execute("SELECT id FROM processos_rtid WHERE comunidade = ?", (comunidade,))
         if not cursor.fetchone():
             return False, "❌ Erro: Comunidade não encontrada."
         
@@ -188,7 +280,6 @@ def update_contestacao(contestacao_id, nome_requerente, data_notificacao, data_r
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Validar status
     status_validos = ["Ativa", "Encerrada", "Improcedente", "Procedente"]
     if status not in status_validos:
         conn.close()
@@ -220,57 +311,3 @@ def delete_contestacao(contestacao_id):
         return False, f"❌ Erro ao remover: {e}"
     finally:
         conn.close()
-
-def get_comunidade_stats(comunidade):
-    """Retorna estatísticas de uma comunidade específica."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    try:
-        # Buscar dados da comunidade
-        cursor.execute("SELECT * FROM processos WHERE comunidade = ?", (comunidade,))
-        row = cursor.fetchone()
-        
-        if not row:
-            return None
-        
-        # Buscar contestações
-        cursor.execute("SELECT COUNT(*) FROM contestacoes WHERE comunidade = ?", (comunidade,))
-        num_contestacoes = cursor.fetchone()[0]
-        
-        # Calcular progresso
-        colunas = [description[0] for description in cursor.description]
-        fases = [col for col in colunas if col not in ['id', 'comunidade', 'municipio', 'status_geral']]
-        
-        cursor.execute(f"SELECT {', '.join(fases)} FROM processos WHERE comunidade = ?", (comunidade,))
-        status_fases = cursor.fetchone()
-        
-        total_fases = len(fases)
-        concluidas = sum(1 for status in status_fases if status == 'Concluído')
-        progresso = (concluidas / total_fases * 100) if total_fases > 0 else 0
-        
-        return {
-            'comunidade': comunidade,
-            'num_contestacoes': num_contestacoes,
-            'progresso': progresso,
-            'total_fases': total_fases,
-            'fases_concluidas': concluidas
-        }
-    except Exception as e:
-        return None
-    finally:
-        conn.close()
-
-def get_all_stats():
-    """Retorna estatísticas de todas as comunidades."""
-    conn = sqlite3.connect(DB_NAME)
-    df = pd.read_sql_query("SELECT comunidade FROM processos ORDER BY comunidade", conn)
-    conn.close()
-    
-    stats = []
-    for comunidade in df['comunidade']:
-        stat = get_comunidade_stats(comunidade)
-        if stat:
-            stats.append(stat)
-    
-    return pd.DataFrame(stats)
