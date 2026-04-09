@@ -19,7 +19,7 @@ st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
 init_db()
 
 # --- TÍTULO E SIDEBAR ---
-st.title("📊 Acompanhamento de Metas: Publicação de RTID's e Portarias")
+st.title("📊 Cardeno de Metas: Publicação de RTID's e Portarias")
 st.markdown("Controle de andamento processos")
 
 st.sidebar.header("Navegação")
