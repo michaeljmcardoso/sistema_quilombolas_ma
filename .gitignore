@@ -125,8 +125,7 @@ celerybeat.pid
 .env
 .venv
 env/
-sisreq/
-sisreqApp/
+sistemaQuilombola/
 venv/
 ENV/
 env.bak/
