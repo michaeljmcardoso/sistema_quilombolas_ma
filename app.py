@@ -19,7 +19,7 @@ st.set_page_config(page_title="Dashboard Quilombolas MA", layout="wide")
 init_db()
 
 # --- TÍTULO E SIDEBAR ---
-st.title("📊 Cardeno de Metas: Publicação de RTID's e Portarias")
+st.title("📊 Caderno de Metas: Publicação de RTID's e Portarias")
 st.markdown("Controle de andamento processos")
 
 st.sidebar.header("Navegação")
@@ -49,35 +49,53 @@ def calcular_progresso(row, fases):
     concluidas = sum(1 for fase in fases_presentes if row[fase] == 'Concluído')
     return (concluidas / total) * 100 if total > 0 else 0
 
-# Definir listas de fases
+# Definir listas de fases ATUALIZADAS
 fases_completas = [
+    # Fase de Identificação e Delimitação
     "notificação_aos_órgãos_e_entidades", "reunião_de_abertura",
     "comunicações_prévias", "relatório_antropológico", "cadastro_de_famílias",
     "levantamento_fundiário", "planta_memorial_descritivo", "análise_de_sobreposicão",
     "rtid_concluído", "reunião_de_validação_na_comunidade",
+    
+    # Fase de Publicação RTID
     "ficha_resumo_do_RTID", "minuta_de_Edital", "parecer_técnico_1",
     "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação",
-    "publicação_DOU", "publicação_DOE", "notificação_aos_órgãos_e_entidades_art_12",
-    "notificação_aos_ocupantes", "notificação_aos_confinantes",
+    "publicação_DOU", "publicação_DOE",
+    
+    # Fase de Notificações
+    "notificação_aos_órgãos_e_entidades_art_12", "notificação_aos_ocupantes", 
+    "notificação_aos_confinantes", "notificação_a_prefeitura",  # NOVA FASE
+    
+    # Fase Contenciosa
     "prazo_de_contestação", "pareceres_técnicos", "pareceres_jurídicos",
     "julgamento_da_contestação_no_CDR", "notificações_do_resultado_do_julgamento_do_CDR",
     "prazo_de_recurso", "análise_de_recurso_na_DQ", "julgamento_do_recurso_no_CD",
     "notificações_do_resultado_do_julgamento_do_CD",
+    
+    # Fase Portaria de Reconhecimento
     "parecer_análise_de_instrução_processual", "instrução_do_kit_portaria",
     "publicação_portaria_DOU", "publicação_portaria_DOE"
 ]
 
+# Fases até RTID (incluindo DOE e notificação_prefeitura)
 fases_ate_rtid = [
+    # Fase de Identificação e Delimitação
     "notificação_aos_órgãos_e_entidades", "reunião_de_abertura",
     "comunicações_prévias", "relatório_antropológico", "cadastro_de_famílias",
     "levantamento_fundiário", "planta_memorial_descritivo", "análise_de_sobreposicão",
     "rtid_concluído", "reunião_de_validação_na_comunidade",
+    
+    # Fase de Publicação RTID
     "ficha_resumo_do_RTID", "minuta_de_Edital", "parecer_técnico_1",
     "parecer_jurídico_1", "análise_do_CDR", "autorização_da_diretoria_para_publicação",
-    "publicação_DOU", "notificação_aos_órgãos_e_entidades_art_12",
-    "notificação_aos_ocupantes", "notificação_aos_confinantes",
+    "publicação_DOU", "publicação_DOE",  # DOE incluído
+    
+    # Fase de Notificações
+    "notificação_aos_órgãos_e_entidades_art_12", "notificação_aos_ocupantes", 
+    "notificação_aos_confinantes", "notificação_a_prefeitura"  # NOVA FASE
 ]
 
+# Fases específicas da Portaria
 fases_portaria = [
     "parecer_análise_de_instrução_processual",
     "instrução_do_kit_portaria",
@@ -96,10 +114,12 @@ if page == "Dashboard Geral":
     # Calcular progressos para RTID
     if not df_rtid.empty:
         df_rtid['Progresso_RTID'] = df_rtid.apply(lambda row: calcular_progresso(row, fases_ate_rtid), axis=1)
-        rtid_publicados = len(df_rtid[df_rtid['publicação_DOU'] == 'Concluído'])
-        progresso_rtid_meta = (rtid_publicados / META_RTID * 100) if META_RTID > 0 else 0
+        rtid_dou_publicados = len(df_rtid[df_rtid['publicação_DOU'] == 'Concluído'])
+        rtid_doe_publicados = len(df_rtid[df_rtid['publicação_DOE'] == 'Concluído'])
+        progresso_rtid_meta = (rtid_dou_publicados / META_RTID * 100) if META_RTID > 0 else 0
     else:
-        rtid_publicados = 0
+        rtid_dou_publicados = 0
+        rtid_doe_publicados = 0
         progresso_rtid_meta = 0
     
     # Calcular progressos para Portaria
@@ -115,24 +135,24 @@ if page == "Dashboard Geral":
         progresso_portarias_meta = 0
     
     # Métricas
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
     
     with col1:
         st.metric("🎯 Meta RTID", f"{META_RTID}")
     with col2:
-        st.metric("📄 RTID's Publicados", f"{rtid_publicados} / {META_RTID}")
+        st.metric("📄 RTID DOU", f"{rtid_dou_publicados} / {META_RTID}")
     with col3:
-        st.metric("📊 % Meta RTID", f"{progresso_rtid_meta:.1f}%")
+        st.metric("📄 RTID DOE", f"{rtid_doe_publicados} / {META_RTID}")
     with col4:
-        st.metric("🎯 Meta Portarias", f"{META_PORTARIAS}")
+        st.metric("📊 % RTID", f"{progresso_rtid_meta:.1f}%")
     with col5:
-        st.metric("📜 Portarias Publicadas", f"{portarias_publicadas} / {META_PORTARIAS}")
+        st.metric("🎯 Meta Portarias", f"{META_PORTARIAS}")
     with col6:
-        st.metric("📊 % Meta Portarias", f"{progresso_portarias_meta:.1f}%")
+        st.metric("📜 Portarias", f"{portarias_publicadas} / {META_PORTARIAS}")
+    with col7:
+        st.metric("📊 % Portaria", f"{progresso_portarias_meta:.1f}%")
 
     st.divider()
-    
-
     
     # ============================================
     # FUNÇÃO PARA GRÁFICO RTID (COM NÃO INICIADOS)
@@ -252,7 +272,7 @@ if page == "Dashboard Geral":
                 tickvals=tick_vals,
                 ticktext=tick_text,
                 tickangle=45,
-                tickfont=dict(size=10),
+                tickfont=dict(size=8),
                 range=[-1.5, len(fases_meta) + 0.5]
             ),
             yaxis=dict(
@@ -582,33 +602,35 @@ elif page == "Gestão RTID":
         
         st.markdown(f"### Editando Fases RTID: **{row['comunidade']}**")
         
-        # Editor de Fases RTID
+        # Editor de Fases RTID - Organizado por categorias atualizadas
         fases_por_categoria = {
-            "Identificação e Delimitação": fases_ate_rtid[:10],
-            "Publicação RTID": fases_ate_rtid[10:]
+            "📋 Identificação e Delimitação": fases_ate_rtid[:10],
+            "📄 Publicação RTID": fases_ate_rtid[10:18],  # até publicação_DOE
+            "📬 Notificações": fases_ate_rtid[18:22],    # incluindo notificação_prefeitura
         }
         
         for categoria, lista_fases in fases_por_categoria.items():
-            with st.expander(f"📋 {categoria}", expanded=True):
-                cols = st.columns(2)
-                for i, fase in enumerate(lista_fases):
-                    with cols[i % 2]:
-                        if fase in row.index:
-                            status_atual = row[fase]
-                            novo_status = st.selectbox(
-                                f"📌 {fase.replace('_', ' ').title()}",
-                                options=["Pendente", "Em Andamento", "Concluído", "Não Aplicável"],
-                                index=["Pendente", "Em Andamento", "Concluído", "Não Aplicável"].index(status_atual),
-                                key=f"rtid_{selected_comunidade}_{fase}"
-                            )
-                            if novo_status != status_atual:
-                                success, msg = update_rtid_status(selected_comunidade, fase, novo_status)
-                                if success:
-                                    st.success(f"✅ Atualizado: {fase}")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                                else:
-                                    st.error(msg)
+            if lista_fases:  # Verificar se a lista não está vazia
+                with st.expander(categoria, expanded=True):
+                    cols = st.columns(2)
+                    for i, fase in enumerate(lista_fases):
+                        with cols[i % 2]:
+                            if fase in row.index:
+                                status_atual = row[fase]
+                                novo_status = st.selectbox(
+                                    f"📌 {fase.replace('_', ' ').title()}",
+                                    options=["Pendente", "Em Andamento", "Concluído", "Não Aplicável"],
+                                    index=["Pendente", "Em Andamento", "Concluído", "Não Aplicável"].index(status_atual),
+                                    key=f"rtid_{selected_comunidade}_{fase}"
+                                )
+                                if novo_status != status_atual:
+                                    success, msg = update_rtid_status(selected_comunidade, fase, novo_status)
+                                    if success:
+                                        st.success(f"✅ Atualizado: {fase}")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    else:
+                                        st.error(msg)
         
         # Contestações
         st.divider()
