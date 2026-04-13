@@ -442,7 +442,7 @@ if page == "Dashboard Geral":
     # ============================================
     # GRÁFICO RTID (COM NÃO INICIADOS)
     # ============================================
-    st.subheader("📄 Meta RTID - Todos os Processos")
+    st.subheader("📄 Meta RTID")
     
     if not df_rtid.empty:
         fig_rtid = criar_grafico_rtid_com_nao_iniciados(
@@ -467,14 +467,14 @@ if page == "Dashboard Geral":
     # ============================================
     # GRÁFICO PORTARIA (SEM NÃO INICIADOS)
     # ============================================
-    st.subheader("📜 Meta Portaria - Apenas Processos Iniciados")
+    st.subheader("📜 Meta Portaria - Apenas Processos Incluídos na Meta")
     
     if not df_portaria.empty:
         fig_portaria = criar_grafico_portaria_sem_nao_iniciados(
             df_portaria, 
             'Progresso_Portaria',
             fases_portaria,
-            "Fase Atual dos Processos Portaria (apenas processos em andamento)"
+            "Fase Atual dos Processos em Portaria"
         )
         
         if fig_portaria:
