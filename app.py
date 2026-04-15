@@ -550,7 +550,7 @@ elif page == "Gestão RTID":
         row = df_rtid[df_rtid['comunidade'] == selected_comunidade].iloc[0]
         
         # Editar Dados Básicos
-        with st.expander("✏️ Editar Dados da Comunidade RTID", expanded=True):
+        with st.expander("✏️ Editar Dados da Comunidade RTID", expanded=False):
             with st.form("edit_rtid_basic"):
                 col1, col2 = st.columns(2)
                 with col1:
@@ -736,7 +736,7 @@ elif page == "Gestão Portaria":
         row = df_portaria[df_portaria['comunidade'] == selected_comunidade].iloc[0]
         
         # Editar Dados Básicos
-        with st.expander("✏️ Editar Dados da Comunidade Portaria", expanded=True):
+        with st.expander("✏️ Editar Dados da Comunidade Portaria", expanded=False):
             with st.form("edit_portaria_basic"):
                 col1, col2 = st.columns(2)
                 with col1:
