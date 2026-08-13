@@ -125,7 +125,7 @@ celerybeat.pid
 .env
 .venv
 env/
-sistemaQuilombola/
+Sistema-Quilombola/
 venv/
 ENV/
 env.bak/
